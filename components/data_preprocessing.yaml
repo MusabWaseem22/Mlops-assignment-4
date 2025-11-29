@@ -1,0 +1,107 @@
+name: Data Preprocessing
+description: 'Preprocess the dataset: clean, scale, and split into train/test sets.
+
+  This component performs:
+  - Data cleaning (remove missing values, handle outliers)
+  - Feature scaling (StandardScaler) if enabled
+  - Train/test split'
+
+inputs:
+- {name: input_data_path, type: String, description: 'Path to the raw data CSV file'}
+- {name: output_train_path, type: String, description: 'Path to save the preprocessed
+    training data'}
+- {name: output_test_path, type: String, description: 'Path to save the preprocessed
+    test data'}
+- {name: test_size, type: Float, default: '0.2', description: 'Proportion of data
+    for testing'}
+- {name: random_state, type: Integer, default: '42', description: 'Random state for
+    reproducibility'}
+- {name: scale_features, type: Boolean, default: 'true', description: 'Whether to
+    scale features using StandardScaler'}
+
+outputs:
+- {name: train_size, type: Integer, description: 'Number of samples in training set'}
+- {name: test_size, type: Integer, description: 'Number of samples in test set'}
+- {name: num_features, type: Integer, description: 'Number of features after preprocessing'}
+
+implementation:
+  container:
+    image: python:3.9
+    command:
+    - sh
+    - -c
+    - |
+      set -e
+      python3 -m pip install --quiet --no-warn-script-location pandas>=2.0.0 numpy>=1.24.0 scikit-learn>=1.3.0 || pip3 install --quiet --no-warn-script-location pandas>=2.0.0 numpy>=1.24.0 scikit-learn>=1.3.0 || pip install --quiet --no-warn-script-location pandas>=2.0.0 numpy>=1.24.0 scikit-learn>=1.3.0
+      "$0" "$@"
+    - |
+      from typing import NamedTuple
+      def data_preprocessing(input_data_path, output_train_path, output_test_path, test_size, random_state, scale_features):
+          import pandas as pd
+          import numpy as np
+          from sklearn.model_selection import train_test_split
+          from sklearn.preprocessing import StandardScaler
+          from collections import namedtuple
+          import os
+          
+          df = pd.read_csv(input_data_path)
+          df = df.dropna().drop_duplicates()
+          
+          X = df.iloc[:, :-1]
+          y = df.iloc[:, -1]
+          
+          X_train, X_test, y_train, y_test = train_test_split(
+              X, y, test_size=test_size, random_state=random_state
+          )
+          
+          if scale_features:
+              scaler = StandardScaler()
+              X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
+              X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+          
+          train_df = X_train.copy()
+          train_df['target'] = y_train.values
+          train_df['split'] = 'train'
+          
+          test_df = X_test.copy()
+          test_df['target'] = y_test.values
+          test_df['split'] = 'test'
+          
+          os.makedirs(os.path.dirname(output_train_path), exist_ok=True)
+          os.makedirs(os.path.dirname(output_test_path), exist_ok=True)
+          
+          train_df.to_csv(output_train_path, index=False)
+          test_df.to_csv(output_test_path, index=False)
+          
+          output = namedtuple('PreprocessingOutput', ['train_size', 'test_size', 'num_features'])
+          return output(train_size=len(train_df), test_size=len(test_df), num_features=X_train.shape[1])
+      
+      import json
+      import os
+      _outputs = data_preprocessing(
+          input_data_path=json.loads(r'''$0'''),
+          output_train_path=json.loads(r'''$1'''),
+          output_test_path=json.loads(r'''$2'''),
+          test_size=float(json.loads(r'''$3''')),
+          random_state=int(json.loads(r'''$4''')),
+          scale_features=json.loads(r'''$5''').lower() == 'true'
+      )
+      os.makedirs('$6', exist_ok=True)
+      with open(os.path.join('$6', 'train_size'), 'w') as f:
+          f.write(str(_outputs.train_size))
+      os.makedirs('$7', exist_ok=True)
+      with open(os.path.join('$7', 'test_size'), 'w') as f:
+          f.write(str(_outputs.test_size))
+      os.makedirs('$8', exist_ok=True)
+      with open(os.path.join('$8', 'num_features'), 'w') as f:
+          f.write(str(_outputs.num_features))
+    - {inputValue: input_data_path}
+    - {inputValue: output_train_path}
+    - {inputValue: output_test_path}
+    - {inputValue: test_size}
+    - {inputValue: random_state}
+    - {inputValue: scale_features}
+    - {outputPath: train_size}
+    - {outputPath: test_size}
+    - {outputPath: num_features}
+

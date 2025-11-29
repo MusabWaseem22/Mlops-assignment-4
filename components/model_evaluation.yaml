@@ -1,0 +1,100 @@
+name: Model Evaluation
+description: 'Evaluate the trained model on the test set and save metrics to a file.
+
+  This component:
+  - Loads the trained model
+  - Evaluates it on the test set
+  - Calculates metrics (R2 score, RMSE, MSE, MAE)
+  - Saves metrics to a text file
+  - Checks if the model meets quality thresholds'
+
+inputs:
+- {name: model_path, type: String, description: 'Path to the trained model artifact
+    (joblib file)'}
+- {name: test_data_path, type: String, description: 'Path to the preprocessed test
+    data CSV file'}
+- {name: metrics_output_path, type: String, description: 'Path to save the evaluation
+    metrics text file'}
+- {name: threshold_r2, type: Float, default: '0.5', description: 'Minimum R2 score
+    threshold for model acceptance'}
+
+outputs:
+- {name: meets_threshold, type: Boolean, description: 'Whether model meets R2 threshold'}
+- {name: r2_score, type: Float, description: 'Calculated R2 score'}
+- {name: rmse, type: Float, description: 'Calculated Root Mean Squared Error'}
+
+implementation:
+  container:
+    image: python:3.9
+    command:
+    - sh
+    - -c
+    - |
+      set -e
+      python3 -m pip install --quiet --no-warn-script-location pandas>=2.0.0 numpy>=1.24.0 scikit-learn>=1.3.0 joblib>=1.3.0 || pip3 install --quiet --no-warn-script-location pandas>=2.0.0 numpy>=1.24.0 scikit-learn>=1.3.0 joblib>=1.3.0 || pip install --quiet --no-warn-script-location pandas>=2.0.0 numpy>=1.24.0 scikit-learn>=1.3.0 joblib>=1.3.0
+      "$0" "$@"
+    - |
+      from typing import NamedTuple
+      def model_evaluation(model_path, test_data_path, metrics_output_path, threshold_r2):
+          import pandas as pd
+          import numpy as np
+          import joblib
+          from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, explained_variance_score
+          from collections import namedtuple
+          import os
+          
+          model = joblib.load(model_path)
+          test_df = pd.read_csv(test_data_path)
+          
+          X_test = test_df.drop(['target', 'split'], axis=1)
+          y_test = test_df['target']
+          
+          y_pred = model.predict(X_test)
+          
+          mse = mean_squared_error(y_test, y_pred)
+          rmse = np.sqrt(mse)
+          mae = mean_absolute_error(y_test, y_pred)
+          r2 = r2_score(y_test, y_pred)
+          explained_variance = explained_variance_score(y_test, y_pred)
+          
+          meets_threshold = r2 >= threshold_r2
+          
+          os.makedirs(os.path.dirname(metrics_output_path), exist_ok=True)
+          with open(metrics_output_path, 'w') as f:
+              f.write("MODEL EVALUATION METRICS\n")
+              f.write(f"R2 Score: {r2:.6f}\n")
+              f.write(f"RMSE: {rmse:.6f}\n")
+              f.write(f"MSE: {mse:.6f}\n")
+              f.write(f"MAE: {mae:.6f}\n")
+              f.write(f"Explained Variance: {explained_variance:.6f}\n")
+              f.write(f"Threshold (R2): {threshold_r2:.4f}\n")
+              f.write(f"Meets Threshold: {meets_threshold}\n")
+          
+          output = namedtuple('EvaluationOutput', ['meets_threshold', 'r2_score', 'rmse'])
+          return output(meets_threshold=meets_threshold, r2_score=float(r2), rmse=float(rmse))
+      
+      import json
+      import os
+      _outputs = model_evaluation(
+          model_path=json.loads(r'''$0'''),
+          test_data_path=json.loads(r'''$1'''),
+          metrics_output_path=json.loads(r'''$2'''),
+          threshold_r2=float(json.loads(r'''$3'''))
+      )
+      os.makedirs('$4', exist_ok=True)
+      with open(os.path.join('$4', 'meets_threshold'), 'w') as f:
+          f.write(str(_outputs.meets_threshold).lower())
+      os.makedirs('$5', exist_ok=True)
+      with open(os.path.join('$5', 'r2_score'), 'w') as f:
+          f.write(str(_outputs.r2_score))
+      os.makedirs('$6', exist_ok=True)
+      with open(os.path.join('$6', 'rmse'), 'w') as f:
+          f.write(str(_outputs.rmse))
+    - {inputValue: model_path}
+    - {inputValue: test_data_path}
+    - {inputValue: metrics_output_path}
+    - {inputValue: threshold_r2}
+    - {outputPath: meets_threshold}
+    - {outputPath: r2_score}
+    - {outputPath: rmse}
+

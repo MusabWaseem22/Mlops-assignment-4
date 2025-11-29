@@ -58,8 +58,8 @@ data/*.csv
 .dvc/tmp/
 
 # Kubeflow
-components/*.yaml
 components/*.tar.gz
+# Note: component YAML files are tracked (they are deliverables)
 
 # OS
 .DS_Store
