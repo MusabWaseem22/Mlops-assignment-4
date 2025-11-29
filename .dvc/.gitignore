@@ -1,0 +1,7 @@
+# DVC cache and temporary files
+cache/
+tmp/
+
+/config.local
+/tmp
+/cache
