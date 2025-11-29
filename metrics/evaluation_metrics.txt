@@ -1,0 +1,25 @@
+==================================================
+MODEL EVALUATION METRICS
+==================================================
+
+Model Path: models/random_forest_model.joblib
+Test Data Path: data/processed/test.csv
+
+METRICS:
+  R2 Score: 0.896942
+  RMSE (Root Mean Squared Error): 2.641338
+  MSE (Mean Squared Error): 6.976664
+  MAE (Mean Absolute Error): 1.199566
+  Explained Variance: 0.898513
+  Mean Absolute Percentage Error: 11.3787%
+
+PREDICTION STATISTICS:
+  Mean Actual Value: 8.2513
+  Mean Predicted Value: 7.9252
+  Std Actual Value: 8.2278
+  Std Predicted Value: 6.1910
+
+THRESHOLD CHECK:
+  Threshold (R2): 0.5000
+  Meets Threshold: True
+==================================================

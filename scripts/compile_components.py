@@ -59,9 +59,9 @@ def compile_all_components():
         with open(output_path, 'w') as f:
             f.write(data_extraction_yaml)
         
-        print(f"   ✓ Saved to: {output_path}")
+        print(f"   [OK] Saved to: {output_path}")
     except Exception as e:
-        print(f"   ✗ Error: {e}")
+        print(f"   [ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
     
@@ -78,9 +78,9 @@ def compile_all_components():
         with open(output_path, 'w') as f:
             f.write(data_preprocessing_yaml)
         
-        print(f"   ✓ Saved to: {output_path}")
+        print(f"   [OK] Saved to: {output_path}")
     except Exception as e:
-        print(f"   ✗ Error: {e}")
+        print(f"   [ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
     
@@ -102,9 +102,9 @@ def compile_all_components():
         with open(output_path, 'w') as f:
             f.write(model_training_yaml)
         
-        print(f"   ✓ Saved to: {output_path}")
+        print(f"   [OK] Saved to: {output_path}")
     except Exception as e:
-        print(f"   ✗ Error: {e}")
+        print(f"   [ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
     
@@ -126,9 +126,9 @@ def compile_all_components():
         with open(output_path, 'w') as f:
             f.write(model_evaluation_yaml)
         
-        print(f"   ✓ Saved to: {output_path}")
+        print(f"   [OK] Saved to: {output_path}")
     except Exception as e:
-        print(f"   ✗ Error: {e}")
+        print(f"   [ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
     

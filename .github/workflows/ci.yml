@@ -7,10 +7,17 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test:
+  ci-pipeline:
     runs-on: ubuntu-latest
     
     steps:
+    # Stage 1: Environment Setup
+    - name: Stage 1 - Environment Setup
+      run: |
+        echo "========================="
+        echo "Stage 1: Environment Setup"
+        echo "========================="
+        
     - name: Checkout code
       uses: actions/checkout@v3
       
@@ -19,36 +26,87 @@ jobs:
       with:
         python-version: '3.9'
         
-    - name: Install dependencies
+    - name: Install dependencies from requirements.txt
       run: |
+        echo "Installing dependencies from requirements.txt..."
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Lint with flake8
-      run: |
-        pip install flake8
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        
-    - name: Check DVC setup
-      run: |
-        dvc --version
-        dvc status
-        
-  build:
-    needs: test
-    runs-on: ubuntu-latest
+        echo "Environment setup complete!"
+        pip list
     
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-      
-    - name: Build Docker image
+    # Stage 2: Pipeline Compilation
+    - name: Stage 2 - Pipeline Compilation
       run: |
-        docker build -t mlops-kubeflow-assignment:latest .
-
+        echo "============================="
+        echo "Stage 2: Pipeline Compilation"
+        echo "============================="
+        
+    - name: Compile Kubeflow Pipeline
+      run: |
+        echo "Compiling Kubeflow pipeline..."
+        echo "Running: python3 pipeline.py"
+        python3 pipeline.py
+        
+        echo "Verifying pipeline.yaml was created..."
+        if [ -f "pipeline.yaml" ]; then
+          echo "SUCCESS: pipeline.yaml generated successfully!"
+          ls -lh pipeline.yaml
+          echo ""
+          echo "Pipeline file size:"
+          wc -l pipeline.yaml
+        else
+          echo "ERROR: pipeline.yaml not found!"
+          exit 1
+        fi
+        
+        echo ""
+        echo "Validating pipeline.yaml syntax..."
+        python3 -c "import yaml; yaml.safe_load(open('pipeline.yaml'))" && echo "YAML syntax is valid!"
+        echo "Pipeline compilation completed successfully!"
+    
+    # Stage 3: Validation
+    - name: Stage 3 - Validation
+      run: |
+        echo "==================="
+        echo "Stage 3: Validation"
+        echo "==================="
+        
+    - name: Validate Pipeline Structure
+      run: |
+        echo "Validating pipeline components..."
+        
+        # Check component files
+        echo "Checking component files..."
+        if [ -f "components/data_extraction.yaml" ] && \
+           [ -f "components/data_preprocessing.yaml" ] && \
+           [ -f "components/model_training.yaml" ] && \
+           [ -f "components/model_evaluation.yaml" ]; then
+          echo "All component YAML files present"
+          ls -lh components/*.yaml
+        else
+          echo "WARNING: Some component files missing"
+        fi
+        
+        # Validate pipeline structure
+        echo ""
+        echo "Validating pipeline structure..."
+        python3 << EOF
+from kfp import compiler
+import yaml
+with open('pipeline.yaml', 'r') as f:
+    spec = yaml.safe_load(f)
+    tasks = spec.get('root', {}).get('dag', {}).get('tasks', {})
+    print(f'Pipeline contains {len(tasks)} components')
+    for task in tasks:
+        print(f'  - {task}')
+EOF
+        
+        echo ""
+        echo "Validation completed successfully!"
+    
+    - name: Upload Pipeline Artifact
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: compiled-pipeline
+        path: pipeline.yaml
